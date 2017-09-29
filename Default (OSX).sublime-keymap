@@ -8,7 +8,7 @@
   { "keys": ["super+k", "shift+right"], "command": "carry_file_to_pane", "args": {"direction": "right"} },
   { "keys": ["super+k", "shift+down"], "command": "carry_file_to_pane", "args": {"direction": "down"} },
   { "keys": ["super+k", "shift+left"], "command": "carry_file_to_pane", "args": {"direction": "left"} },
-  
+
   { "keys": ["super+k", "alt+up"], "command": "clone_file_to_pane", "args": {"direction": "up"} },
   { "keys": ["super+k", "alt+right"], "command": "clone_file_to_pane", "args": {"direction": "right"} },
   { "keys": ["super+k", "alt+down"], "command": "clone_file_to_pane", "args": {"direction": "down"} },
@@ -16,10 +16,12 @@
   // You can also create the pane automatically with the following command (insert empty parameters):
   // { "keys": [], "command": "create_pane_with_cloned_file", "args": {"direction": ""} }
 
-  { "keys": ["super+k", "super+up"], "command": "create_pane", "args": {"direction": "up"} },
-  { "keys": ["super+k", "super+right"], "command": "create_pane", "args": {"direction": "right"} },
-  { "keys": ["super+k", "super+down"], "command": "create_pane", "args": {"direction": "down"} },
-  { "keys": ["super+k", "super+left"], "command": "create_pane", "args": {"direction": "left"} },
+  // Disabled due conflicts with default keys for panel creation
+  // { "keys": ["ctrl+k", "ctrl+up"], "command": "create_pane", "args": {"direction": "up"} },
+  // { "keys": ["ctrl+k", "ctrl+right"], "command": "create_pane", "args": {"direction": "right"} },
+  // { "keys": ["ctrl+k", "ctrl+down"], "command": "create_pane", "args": {"direction": "down"} },
+  // { "keys": ["ctrl+k", "ctrl+left"], "command": "create_pane", "args": {"direction": "left"} },
+
   // You can also add  "give_focus": true to automatically focus on the new pane as follows:
   // { "keys": [], "command": "create_pane", "args": {"direction": "", "give_focus": true} }
 
@@ -29,12 +31,12 @@
   { "keys": ["super+k", "super+shift+left"], "command": "destroy_pane", "args": {"direction": "left"} },
   // You can also destroy the current pane by binding the following command:
   // { "keys": [], "command": "destroy_pane", "args": {"direction": "self"} },
-  
+
   { "keys": ["super+k", "super+alt+up"], "command": "create_pane_with_file", "args": {"direction": "up"} },
   { "keys": ["super+k", "super+alt+right"], "command": "create_pane_with_file", "args": {"direction": "right"} },
   { "keys": ["super+k", "super+alt+down"], "command": "create_pane_with_file", "args": {"direction": "down"} },
   { "keys": ["super+k", "super+alt+left"], "command": "create_pane_with_file", "args": {"direction": "left"} },
-  
+
 
   // You can pull a file from another pane by binding the following command:
   // { "keys": [], "command": "pull_file_from_pane", "args": { "direction": ""} }
