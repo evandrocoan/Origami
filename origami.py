@@ -132,7 +132,12 @@ class PaneCommand(sublime_plugin.WindowCommand):
 			return
 		window = self.window
 		self.travel_to_pane(direction, create_new_if_necessary)
-		window.set_view_index(view, window.active_group(), 0)
+
+		active_group = window.active_group()
+		views_in_group = window.views_in_group(active_group)
+		window.set_view_index(view, active_group, len(views_in_group))
+		sublime.set_timeout(lambda: window.focus_view(view))
+		
 
 	def clone_file_to_pane(self, direction, create_new_if_necessary=False):
 		window = self.window
@@ -252,9 +257,13 @@ class PaneCommand(sublime_plugin.WindowCommand):
 	def _on_resize_panes_get_layout(self, orientation, cells, relevant_indx, orig_data, text):
 		window = self.window
 		rows, cols, _ = self.get_layout()
+
+		input_data = [float(x) for x in text.split(",")]
+		if any(d > 1.0 for d in input_data):
+			return {"cols": cols, "rows": rows, "cells": cells}
+
 		cells = copy.deepcopy(cells)
 		data = copy.deepcopy(orig_data)
-		input_data = [float(x) for x in text.split(",")]
 		for i, d in zip(relevant_indx, input_data):
 			data[i] = d
 
@@ -504,7 +513,8 @@ class PaneCommand(sublime_plugin.WindowCommand):
 
 			if view:
 				active_group_index = self.window.active_group()
-				self.window.set_view_index(view, active_group_index, 0)
+				views_in_group = self.window.views_in_group(active_group_index)
+				self.window.set_view_index(view, active_group_index, len(views_in_group))
 
 
 class TravelToPaneCommand(PaneCommand, WithSettings):
@@ -605,7 +615,7 @@ class SaveLayoutCommand(PaneCommand, WithSettings):
 
 			if sublime.ok_cancel_dialog(dialog_str, dialog_btn):
 				def get_index(seq, attr, value):
-				    return next(i for (i, d) in enumerate(seq) if d[attr] == value)
+					return next(i for (i, d) in enumerate(seq) if d[attr] == value)
 
 				layout = saved_layouts[get_index(saved_layouts, 'nickname', nickname)]
 				layout['rows'] = layout_data[0]
@@ -736,25 +746,39 @@ class NewWindowWithCurrentLayoutCommand(PaneCommand):
 		fixed_set_layout(new_window, layout)
 
 
-class AutoCloseEmptyPanes(sublime_plugin.EventListener):
+class AutoCloseEmptyPanes(sublime_plugin.EventListener, WithSettings):
+	def is_tabless_view(self, view):
+		"""When you make a new pane, it comes with a tabless view that gets a tab when you type into it. You also get
+		a similar view when using the command palette to open a file.
+		If we think it's this kind of view, return True."""
+		if sublime.version()[0] == '2':
+			return False
+		elif view.window().get_view_index(view)[1] == -1:
+			return True
+		return False
+
 	def on_close(self, view):
+		if sublime.version()[0] == '2':
+			self.on_pre_close(view)
+
+	def on_pre_close(self, view):
+		# Read from global settings for backward compatibility
 		auto_close = view.settings().get("origami_auto_close_empty_panes", False)
+		auto_close = self.settings().get("auto_close_empty_panes", auto_close)
 		if not auto_close:
 			return
 		window = sublime.active_window()
 		active_group = window.active_group()
 
-		if sublime.version()[0] == '2':
-			# in sublime 2 on_close is called before the view is removed, so destroying
-			# the current pane at this point will crash it.  using set_timeout avoids this
-			if len(window.views_in_group(active_group)) == 1:
-				sublime.set_timeout(lambda: window.run_command("destroy_pane", {"direction":"self"}), 0)
-		else:
-			# otherwise fall back on the current behavior
-			if len(window.views_in_group(active_group)) == 0:
-				window.run_command("destroy_pane", args={"direction":"self"})
+		if self.is_tabless_view(view):
+			# We don't want to close the pane when closing a transient view
+			return
 
-class AutoZoomOnFocus(sublime_plugin.EventListener):
+		# We're in pre_close, so use set_timeout to close the group right after this.
+		if len(window.views_in_group(active_group)) == 1:
+			sublime.set_timeout(lambda: window.run_command("destroy_pane", {"direction":"self"}), 0)
+
+class AutoZoomOnFocus(sublime_plugin.EventListener, WithSettings):
 	running = False
 	active_group = -1
 
@@ -779,7 +803,9 @@ class AutoZoomOnFocus(sublime_plugin.EventListener):
 	def on_activated(self, view):
 		if self.running:
 			return
+		# Read from global settings for backward compatibility
 		fraction = view.settings().get("origami_auto_zoom_on_focus", False)
+		fraction = self.settings().get("auto_zoom_on_focus", fraction)
 		if not fraction:
 			return
 		if view.settings().get("is_widget"):
