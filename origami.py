@@ -784,18 +784,28 @@ class AutoCloseEmptyPanes(sublime_plugin.EventListener, WithSettings):
 		# Read from global settings for backward compatibility
 		auto_close = view.settings().get("origami_auto_close_empty_panes", False)
 		auto_close = self.settings().get("auto_close_empty_panes", auto_close)
-		if not auto_close:
-			return
 		window = sublime.active_window()
-		active_group = window.active_group()
+
+		pane = PaneCommand( window )
+		has_zoom = pane.has_zoom()
+
+		if not auto_close and not has_zoom:
+			return
 
 		if self.is_tabless_view(view):
 			# We don't want to close the pane when closing a transient view
 			return
 
+		active_group = window.active_group()
+
 		# We're in pre_close, so use set_timeout to close the group right after this.
 		if len(window.views_in_group(active_group)) == 1:
-			sublime.set_timeout(lambda: window.run_command("destroy_pane", {"direction":"self"}), 0)
+
+			if auto_close:
+				sublime.set_timeout(lambda: window.run_command("destroy_pane", {"direction":"self"}), 0)
+
+			if has_zoom:
+				window.run_command( "unzoom_pane" )
 
 class AutoZoomOnFocus(sublime_plugin.EventListener, WithSettings):
 	running = False
