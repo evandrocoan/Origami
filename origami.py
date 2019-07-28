@@ -416,6 +416,19 @@ class PaneCommand(sublime_plugin.WindowCommand):
 			self.zoom_pane(fraction)
 
 	def create_pane(self, direction, give_focus=False):
+		has_zoom = self.has_zoom()
+		# print('create_pane has_zoom', has_zoom, 'active_group', self.window.active_group(), 'give_focus', give_focus)
+
+		if has_zoom and not give_focus:
+			give_focus = True
+
+		def zoomed_function():
+			self.window = sublime.active_window()
+			self._create_pane( direction, give_focus )
+
+		run_zoomed_function( self, zoomed_function )
+
+	def _create_pane(self, direction, give_focus=False):
 		window = self.window
 		rows, cols, cells = self.get_layout()
 		current_group = window.active_group()
