@@ -864,7 +864,7 @@ class OrigamiFocusGroupCommand(PaneCommand):
 		active_group = window.active_group()
 
 		# avoid visual flip/glitch when switching to a non existing group or the current one
-		if group > num_groups or group == active_group:
+		if group >= num_groups or group == active_group:
 			return
 
 		has_zoom = self.has_zoom()
