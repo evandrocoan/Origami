@@ -345,6 +345,7 @@ class PaneCommand(sublime_plugin.WindowCommand):
 
 		layout = {"cols": cols, "rows": rows, "cells": cells}
 		fixed_set_layout(window, layout)
+		window.settings().set( "origami_has_zoom", True )
 
 	def unzoom_pane(self):
 		window = self.window
@@ -367,9 +368,15 @@ class PaneCommand(sublime_plugin.WindowCommand):
 
 		layout = {"cols": cols, "rows": rows, "cells": cells}
 		fixed_set_layout(window, layout)
+		window.settings().set( "origami_has_zoom", False )
 
 	def has_zoom(self):
 		window = self.window
+		origami_has_zoom = window.settings().get( "origami_has_zoom", None )
+
+		if origami_has_zoom is not None:
+			return origami_has_zoom
+
 		rows,cols,cells = self.get_layout()
 		equal_spacing = True
 
