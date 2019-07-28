@@ -1,6 +1,8 @@
 from __future__ import division
 import sublime, sublime_plugin
 import copy
+import time
+import threading
 from functools import partial
 
 XMIN, YMIN, XMAX, YMAX = list(range(4))
@@ -137,7 +139,7 @@ class PaneCommand(sublime_plugin.WindowCommand):
 		views_in_group = window.views_in_group(active_group)
 		window.set_view_index(view, active_group, len(views_in_group))
 		sublime.set_timeout(lambda: window.focus_view(view))
-		
+
 
 	def clone_file_to_pane(self, direction, create_new_if_necessary=False):
 		window = self.window
@@ -308,10 +310,17 @@ class PaneCommand(sublime_plugin.WindowCommand):
 			fraction = .9
 
 		fraction = min(1, max(0, fraction))
-
 		window = self.window
+
+		active_group = window.active_group()
+		views_in_group = window.views_in_group( active_group )
+		if not views_in_group:
+			window.run_command( "insert", {"characters": "a" } )
+			window.run_command( "undo" )
+
 		rows,cols,cells = self.get_layout()
-		current_cell = cells[window.active_group()]
+		current_cell = cells[active_group]
+		window.settings().set('origami_fraction%s' % active_group, fraction)
 
 		current_col = current_cell[0]
 		num_cols = len(cols)-1
@@ -359,7 +368,7 @@ class PaneCommand(sublime_plugin.WindowCommand):
 		layout = {"cols": cols, "rows": rows, "cells": cells}
 		fixed_set_layout(window, layout)
 
-	def toggle_zoom(self, fraction):
+	def has_zoom(self):
 		window = self.window
 		rows,cols,cells = self.get_layout()
 		equal_spacing = True
@@ -380,11 +389,14 @@ class PaneCommand(sublime_plugin.WindowCommand):
 				equal_spacing = False
 				break
 
-		if equal_spacing:
-			self.zoom_pane(fraction)
-		else:
-			self.unzoom_pane()
+		return not equal_spacing
 
+	def toggle_zoom(self, fraction):
+
+		if self.has_zoom():
+			self.unzoom_pane()
+		else:
+			self.zoom_pane(fraction)
 
 	def create_pane(self, direction, give_focus=False):
 		window = self.window
@@ -819,3 +831,75 @@ class AutoZoomOnFocus(sublime_plugin.EventListener, WithSettings):
 		self.running = True
 
 		sublime.set_timeout(lambda: self.delayed_zoom(view, fraction), 0)
+
+
+class OrigamiMoveToGroupCommand(PaneCommand):
+
+	def run(self, group):
+		window = self.window
+
+		def move():
+			time.sleep(0.01)
+			# print('running move')
+
+			window = sublime.active_window()
+			window.run_command( "move_to_group", { "group": group } )
+
+		def focus():
+			time.sleep(0.02)
+			# print('running focus')
+
+			window = sublime.active_window()
+			window.run_command( "focus_group", { "group": group } )
+
+		threading.Thread(target=move).start()
+		threading.Thread(target=focus).start()
+
+
+class OrigamiFocusGroupCommand(PaneCommand):
+
+	def run(self, group):
+		window = self.window
+		num_groups = window.num_groups()
+		active_group = window.active_group()
+
+		# avoid visual flip/glitch when switching to a non existing group or the current one
+		if group > num_groups or group == active_group:
+			return
+
+		has_zoom = self.has_zoom()
+		# print('has_zoom', has_zoom)
+
+		if has_zoom:
+			fraction = window.settings().get( 'origami_fraction%s' % active_group, 0.9 )
+			# print('fraction', fraction)
+			# print('active_group1', sublime.active_window().active_group())
+
+			def unzoom():
+				time.sleep(0.01)
+				# print('running unzoom')
+
+				window = sublime.active_window()
+				window.run_command( "unzoom_pane" )
+
+			def focus():
+				time.sleep(0.02)
+				# print('running focus')
+
+				window = sublime.active_window()
+				window.run_command( "focus_group", { "group": group } )
+
+			def rezoom():
+				time.sleep(0.03)
+				# print('running rezoom')
+
+				window = sublime.active_window()
+				window.run_command( "zoom_pane", { "fraction": fraction } )
+
+			threading.Thread(target=unzoom).start()
+			threading.Thread(target=focus).start()
+			threading.Thread(target=rezoom).start()
+
+		else:
+			window.run_command( "focus_group", { "group": group } )
+
