@@ -16,5 +16,8 @@
     "create_new_pane_if_necessary": true,
 
     // Close the pane when it become empty
-    "auto_close_empty_panes": false
+    "auto_close_empty_panes": false,
+
+    // A value between 0.0 and 1.0 to zoom a panel automatically when focused
+    "auto_zoom_on_focus": false,
 }
