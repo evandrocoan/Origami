@@ -119,6 +119,14 @@ class PaneCommand(sublime_plugin.WindowCommand):
 		return dupe_views
 
 	def travel_to_pane(self, direction, create_new_if_necessary=False):
+
+		def zoomed_function():
+			self.window = sublime.active_window()
+			self._travel_to_pane( direction, create_new_if_necessary )
+
+		run_zoomed_function( self, zoomed_function )
+
+	def _travel_to_pane(self, direction, create_new_if_necessary=False):
 		adjacent_cell = self.adjacent_cell(direction)
 		if adjacent_cell:
 			cells = self.get_cells()
@@ -314,6 +322,8 @@ class PaneCommand(sublime_plugin.WindowCommand):
 
 		active_group = window.active_group()
 		views_in_group = window.views_in_group( active_group )
+
+		# print('zoom_pane active_group', active_group, 'views_in_group', views_in_group)
 		if not views_in_group:
 			window.run_command( "insert", {"characters": "a" } )
 			window.run_command( "undo" )
@@ -900,7 +910,7 @@ def run_zoomed_function(self, zoomed_function):
 	active_group = window.active_group()
 
 	has_zoom = self.has_zoom()
-	# print('has_zoom', has_zoom)
+	# print('run_zoomed_function has_zoom', has_zoom)
 
 	if has_zoom:
 		fraction = window.settings().get( 'origami_fraction%s' % active_group, 0.9 )
@@ -913,12 +923,14 @@ def run_zoomed_function(self, zoomed_function):
 			# print('running unzoom')
 			window = sublime.active_window()
 			window.run_command( "unzoom_pane" )
+			threading.Thread(target=focus).start()
 
 		def focus():
 			time.sleep(0.02)
 
-			# print('running focus')
+			# print('running zoomed_function')
 			zoomed_function()
+			threading.Thread(target=rezoom).start()
 
 		def rezoom():
 			time.sleep(0.03)
@@ -928,8 +940,6 @@ def run_zoomed_function(self, zoomed_function):
 			window.run_command( "zoom_pane", { "fraction": fraction } )
 
 		threading.Thread(target=unzoom).start()
-		threading.Thread(target=focus).start()
-		threading.Thread(target=rezoom).start()
 
 	else:
 		zoomed_function()
