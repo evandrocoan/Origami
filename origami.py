@@ -118,13 +118,13 @@ class PaneCommand(sublime_plugin.WindowCommand):
 				dupe_views.append(pd)
 		return dupe_views
 
-	def travel_to_pane(self, direction, create_new_if_necessary=False):
+	def travel_to_pane(self, direction, create_new_if_necessary=False, aftermath=None):
 
 		def zoomed_function():
 			self.window = sublime.active_window()
 			self._travel_to_pane( direction, create_new_if_necessary )
 
-		run_zoomed_function( self, zoomed_function )
+		run_zoomed_function( self, zoomed_function, aftermath )
 
 	def _travel_to_pane(self, direction, create_new_if_necessary=False):
 		adjacent_cell = self.adjacent_cell(direction)
@@ -140,13 +140,15 @@ class PaneCommand(sublime_plugin.WindowCommand):
 		if view == None:
 			# If we're in an empty group, there's no active view
 			return
-		window = self.window
-		self.travel_to_pane(direction, create_new_if_necessary)
 
-		active_group = window.active_group()
-		views_in_group = window.views_in_group(active_group)
-		window.set_view_index(view, active_group, len(views_in_group))
-		sublime.set_timeout(lambda: window.focus_view(view))
+		def aftermath(self):
+			window = self.window
+			active_group = window.active_group()
+			views_in_group = window.views_in_group(active_group)
+			window.set_view_index(view, active_group, len(views_in_group))
+			sublime.set_timeout(lambda: window.focus_view(view))
+
+		self.travel_to_pane(direction, create_new_if_necessary, aftermath)
 
 
 	def clone_file_to_pane(self, direction, create_new_if_necessary=False):
@@ -415,7 +417,7 @@ class PaneCommand(sublime_plugin.WindowCommand):
 		else:
 			self.zoom_pane(fraction)
 
-	def create_pane(self, direction, give_focus=False):
+	def create_pane(self, direction, give_focus=False, aftermath=None):
 		has_zoom = self.has_zoom()
 		# print('create_pane has_zoom', has_zoom, 'active_group', self.window.active_group(), 'give_focus', give_focus)
 
@@ -426,7 +428,7 @@ class PaneCommand(sublime_plugin.WindowCommand):
 			self.window = sublime.active_window()
 			self._create_pane( direction, give_focus )
 
-		run_zoomed_function( self, zoomed_function )
+		run_zoomed_function( self, zoomed_function, aftermath )
 
 	def _create_pane(self, direction, give_focus=False):
 		window = self.window
@@ -486,8 +488,9 @@ class PaneCommand(sublime_plugin.WindowCommand):
 				if c[YMIN] == current[YMIN] and c[YMAX] == current[YMAX]:
 					target_dir = dir
 		if target_dir:
-			self.travel_to_pane(target_dir)
-			self.destroy_pane(opposite_direction(target_dir))
+			def aftermath(self):
+				self.destroy_pane(opposite_direction(target_dir))
+			self.travel_to_pane(target_dir, aftermath=aftermath)
 
 	def destroy_pane(self, direction):
 		if direction == "self":
@@ -582,14 +585,16 @@ class CloneFileToPaneCommand(PaneCommand, WithSettings):
 
 class CreatePaneWithFileCommand(PaneCommand):
 	def run(self, direction):
-		self.create_pane(direction)
-		self.carry_file_to_pane(direction)
+		def aftermath(self):
+			self.carry_file_to_pane(direction)
+		self.create_pane(direction, aftermath=aftermath)
 
 
 class CreatePaneWithClonedFileCommand(PaneCommand):
 	def run(self, direction):
-		self.create_pane(direction)
-		self.clone_file_to_pane(direction)
+		def aftermath(self):
+			self.create_pane(direction)
+		self.clone_file_to_pane(direction, aftermath=aftermath)
 
 
 class PullFileFromPaneCommand(PaneCommand):
@@ -918,17 +923,16 @@ class OrigamiFocusGroupCommand(PaneCommand):
 		run_zoomed_function( self, focus )
 
 
-def run_zoomed_function(self, zoomed_function):
+def run_zoomed_function(self, zoomed_function, aftermath=None):
 	window = self.window
 	active_group = window.active_group()
 
 	has_zoom = self.has_zoom()
-	# print('run_zoomed_function has_zoom', has_zoom)
+	# print('run_zoomed_function has_zoom', has_zoom, 'aftermath', aftermath)
 
 	if has_zoom:
 		fraction = window.settings().get( 'origami_fraction%s' % active_group, 0.9 )
-		# print('fraction', fraction)
-		# print('active_group1', sublime.active_window().active_group())
+		# print('run_zoomed_function fraction', fraction, 'active_group', sublime.active_window().active_group())
 
 		def unzoom():
 			time.sleep(0.01)
@@ -943,6 +947,11 @@ def run_zoomed_function(self, zoomed_function):
 
 			# print('running zoomed_function')
 			zoomed_function()
+
+			if aftermath:
+				self.window = sublime.active_window()
+				aftermath( self )
+
 			threading.Thread(target=rezoom).start()
 
 		def rezoom():
@@ -956,4 +965,8 @@ def run_zoomed_function(self, zoomed_function):
 
 	else:
 		zoomed_function()
+
+		if aftermath:
+			self.window = window
+			aftermath( self )
 
