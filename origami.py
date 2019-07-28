@@ -109,13 +109,15 @@ class PaneCommand(sublime_plugin.WindowCommand):
 		return None
 
 	def duplicated_views(self, original_group, duplicating_group):
-		original_views = self.window.views_in_group(original_group)
-		original_buffers = [v.buffer_id() for v in original_views]
+		# original_views = self.window.views_in_group(original_group)
+		# original_buffers = {v.buffer_id() for v in original_views}
 		potential_dupe_views = self.window.views_in_group(duplicating_group)
 		dupe_views = []
-		for pd in potential_dupe_views:
-			if pd.buffer_id() in original_buffers:
-				dupe_views.append(pd)
+		for view_to_remove in potential_dupe_views:
+			# if view_to_remove.buffer_id() in original_buffers:
+			# print('duplicated_views file_name', view_to_remove.file_name(), 'size', view_to_remove.size(), 'name', view_to_remove.name(), 'is_dirty', view_to_remove.is_dirty())
+			if view_to_remove.size() < 1 and view_to_remove.name() == "" and view_to_remove.file_name() is None:
+				dupe_views.append(view_to_remove)
 		return dupe_views
 
 	def travel_to_pane(self, direction, create_new_if_necessary=False, aftermath=None):
@@ -512,9 +514,12 @@ class PaneCommand(sublime_plugin.WindowCommand):
 			active_view = window.active_view()
 			group_to_remove = cells.index(cell_to_remove)
 			dupe_views = self.duplicated_views(current_group, group_to_remove)
-			for d in dupe_views:
-				window.focus_view(d)
+
+			# print('destroy_pane dupe_views', dupe_views)
+			for view_to_remove in dupe_views:
+				window.focus_view(view_to_remove)
 				window.run_command('close')
+
 			if active_view:
 				window.focus_view(active_view)
 
@@ -812,8 +817,8 @@ class AutoCloseEmptyPanes(sublime_plugin.EventListener, WithSettings):
 		# Read from global settings for backward compatibility
 		auto_close = view.settings().get("origami_auto_close_empty_panes", False)
 		auto_close = self.settings().get("auto_close_empty_panes", auto_close)
-		window = sublime.active_window()
 
+		window = sublime.active_window()
 		pane = PaneCommand( window )
 		has_zoom = pane.has_zoom()
 
