@@ -864,42 +864,56 @@ class OrigamiFocusGroupCommand(PaneCommand):
 		active_group = window.active_group()
 
 		# avoid visual flip/glitch when switching to a non existing group or the current one
-		if group >= num_groups or group == active_group:
+		if group >= num_groups:
 			return
 
-		has_zoom = self.has_zoom()
-		# print('has_zoom', has_zoom)
-
-		if has_zoom:
-			fraction = window.settings().get( 'origami_fraction%s' % active_group, 0.9 )
-			# print('fraction', fraction)
-			# print('active_group1', sublime.active_window().active_group())
-
-			def unzoom():
-				time.sleep(0.01)
-				# print('running unzoom')
-
-				window = sublime.active_window()
-				window.run_command( "unzoom_pane" )
-
-			def focus():
-				time.sleep(0.02)
-				# print('running focus')
-
-				window = sublime.active_window()
-				window.run_command( "focus_group", { "group": group } )
-
-			def rezoom():
-				time.sleep(0.03)
-				# print('running rezoom')
-
-				window = sublime.active_window()
-				window.run_command( "zoom_pane", { "fraction": fraction } )
-
-			threading.Thread(target=unzoom).start()
-			threading.Thread(target=focus).start()
-			threading.Thread(target=rezoom).start()
-
-		else:
+		if group == active_group:
 			window.run_command( "focus_group", { "group": group } )
+			return
+
+		def focus():
+			window = sublime.active_window()
+			window.run_command( "focus_group", { "group": group } )
+
+		run_zoomed_function( self, focus )
+
+
+def run_zoomed_function(self, zoomed_function):
+	window = self.window
+	active_group = window.active_group()
+
+	has_zoom = self.has_zoom()
+	# print('has_zoom', has_zoom)
+
+	if has_zoom:
+		fraction = window.settings().get( 'origami_fraction%s' % active_group, 0.9 )
+		# print('fraction', fraction)
+		# print('active_group1', sublime.active_window().active_group())
+
+		def unzoom():
+			time.sleep(0.01)
+
+			# print('running unzoom')
+			window = sublime.active_window()
+			window.run_command( "unzoom_pane" )
+
+		def focus():
+			time.sleep(0.02)
+
+			# print('running focus')
+			zoomed_function()
+
+		def rezoom():
+			time.sleep(0.03)
+
+			# print('running rezoom')
+			window = sublime.active_window()
+			window.run_command( "zoom_pane", { "fraction": fraction } )
+
+		threading.Thread(target=unzoom).start()
+		threading.Thread(target=focus).start()
+		threading.Thread(target=rezoom).start()
+
+	else:
+		zoomed_function()
 
