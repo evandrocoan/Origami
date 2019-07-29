@@ -109,13 +109,21 @@ class PaneCommand(sublime_plugin.WindowCommand):
 		return None
 
 	def duplicated_views(self, original_group, duplicating_group):
-		# original_views = self.window.views_in_group(original_group)
-		# original_buffers = {v.buffer_id() for v in original_views}
+		original_views = self.window.views_in_group(original_group)
+		original_buffers = {v.buffer_id() for v in original_views}
 		potential_dupe_views = self.window.views_in_group(duplicating_group)
 		dupe_views = []
 		for view_to_remove in potential_dupe_views:
-			# if view_to_remove.buffer_id() in original_buffers:
-			# print('duplicated_views file_name', view_to_remove.file_name(), 'size', view_to_remove.size(), 'name', view_to_remove.name(), 'is_dirty', view_to_remove.is_dirty())
+			if view_to_remove.buffer_id() in original_buffers:
+				dupe_views.append(view_to_remove)
+		return dupe_views
+
+	@staticmethod
+	def tabless_views(window, duplicating_group):
+		potential_dupe_views = window.views_in_group(duplicating_group)
+		dupe_views = []
+		for view_to_remove in potential_dupe_views:
+			# print('tabless_views file_name', view_to_remove.file_name(), 'size', view_to_remove.size(), 'name', view_to_remove.name(), 'is_dirty', view_to_remove.is_dirty())
 			if view_to_remove.size() < 1 and view_to_remove.name() == "" and view_to_remove.file_name() is None:
 				dupe_views.append(view_to_remove)
 		return dupe_views
@@ -513,7 +521,8 @@ class PaneCommand(sublime_plugin.WindowCommand):
 		if cell_to_remove:
 			active_view = window.active_view()
 			group_to_remove = cells.index(cell_to_remove)
-			dupe_views = self.duplicated_views(current_group, group_to_remove)
+			# dupe_views = self.duplicated_views(current_group, group_to_remove)
+			dupe_views = self.tabless_views(window, group_to_remove)
 
 			# print('destroy_pane dupe_views', dupe_views)
 			for view_to_remove in dupe_views:
