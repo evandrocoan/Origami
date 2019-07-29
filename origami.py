@@ -805,8 +805,10 @@ class AutoCloseEmptyPanes(sublime_plugin.EventListener, WithSettings):
 		If we think it's this kind of view, return True."""
 		if sublime.version()[0] == '2':
 			return False
-		elif view.window().get_view_index(view)[1] == -1:
-			return True
+		else:
+			window = view.window() or sublime.active_window()
+			if window and window.get_view_index(view)[1] == -1:
+				return True
 		return False
 
 	def on_close(self, view):
