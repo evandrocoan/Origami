@@ -195,7 +195,6 @@ class PaneCommand(sublime_plugin.WindowCommand):
 	def travel_to_pane(self, direction, create_new_if_necessary=False, aftermath=None):
 
 		def zoomed_function():
-			self.window = sublime.active_window()
 			self._travel_to_pane( direction, create_new_if_necessary )
 
 		run_zoomed_function( self, zoomed_function, aftermath )
@@ -500,7 +499,6 @@ class PaneCommand(sublime_plugin.WindowCommand):
 			give_focus = True
 
 		def zoomed_function():
-			self.window = sublime.active_window()
 			self._create_pane( direction, give_focus )
 
 		run_zoomed_function( self, zoomed_function, aftermath )
@@ -996,7 +994,6 @@ class OrigamiFocusGroupCommand(PaneCommand):
 			return
 
 		def focus():
-			window = sublime.active_window()
 			window.run_command( "focus_group", { "group": group } )
 
 		run_zoomed_function( self, focus )
@@ -1017,7 +1014,6 @@ def run_zoomed_function(self, zoomed_function, aftermath=None):
 			time.sleep(0.01)
 
 			# print('running unzoom')
-			window = sublime.active_window()
 			window.run_command( "unzoom_pane" )
 			threading.Thread(target=focus).start()
 
@@ -1028,7 +1024,6 @@ def run_zoomed_function(self, zoomed_function, aftermath=None):
 			zoomed_function()
 
 			if aftermath:
-				self.window = sublime.active_window()
 				aftermath( self )
 
 			threading.Thread(target=rezoom).start()
@@ -1037,7 +1032,6 @@ def run_zoomed_function(self, zoomed_function, aftermath=None):
 			time.sleep(0.03)
 
 			# print('running rezoom')
-			window = sublime.active_window()
 			window.run_command( "zoom_pane", { "fraction": fraction } )
 
 		threading.Thread(target=unzoom).start()
@@ -1046,6 +1040,5 @@ def run_zoomed_function(self, zoomed_function, aftermath=None):
 		zoomed_function()
 
 		if aftermath:
-			self.window = window
 			aftermath( self )
 
