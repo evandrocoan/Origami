@@ -966,20 +966,18 @@ class OrigamiMoveToGroupCommand(PaneCommand):
 
 		def move():
 			time.sleep(0.01)
-			# print('running move')
 
-			window = sublime.active_window()
+			# print('running move')
 			window.run_command( "move_to_group", { "group": group } )
+			threading.Thread(target=focus).start()
 
 		def focus():
 			time.sleep(0.02)
-			# print('running focus')
 
-			window = sublime.active_window()
+			# print('running focus')
 			window.run_command( "focus_group", { "group": group } )
 
 		threading.Thread(target=move).start()
-		threading.Thread(target=focus).start()
 
 
 class OrigamiFocusGroupCommand(PaneCommand):
