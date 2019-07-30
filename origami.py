@@ -80,7 +80,7 @@ def plugin_loaded():
         g_sleepEvent.set()
 
         # Wait last thread Preferences class to be unloaded
-        sublime.set_timeout_async( configure_tabless_count, 5000 )
+        sublime.set_timeout_async( configure_tabless_count, 15000 )
 
 
 def configure_tabless_count():
@@ -124,7 +124,10 @@ def check_view_to_close():
 	# print( 'group', group, 'views_in_group', window.views_in_group( group ), 'g_views_to_close', g_views_to_close )
 
 	if group in g_views_to_close and len( window.views_in_group( group ) ) > 1:
-		g_views_to_close[group].close()
+
+		if PaneCommand.is_tabless( g_views_to_close[group] ):
+			g_views_to_close[group].close()
+
 		del g_views_to_close[group]
 
 
@@ -182,15 +185,19 @@ class PaneCommand(sublime_plugin.WindowCommand):
 				dupe_views.append(view_to_remove)
 		return dupe_views
 
-	@staticmethod
-	def tabless_views(window, duplicating_group):
+	@classmethod
+	def tabless_views(cls, window, duplicating_group):
 		potential_dupe_views = window.views_in_group(duplicating_group)
 		dupe_views = []
 		for view_to_remove in potential_dupe_views:
 			# print('tabless_views file_name', view_to_remove.file_name(), 'size', view_to_remove.size(), 'name', view_to_remove.name(), 'is_dirty', view_to_remove.is_dirty())
-			if view_to_remove.size() < 1 and view_to_remove.name() == "" and view_to_remove.file_name() is None:
+			if cls.is_tabless( view_to_remove ):
 				dupe_views.append(view_to_remove)
 		return dupe_views
+
+	@staticmethod
+	def is_tabless(view):
+		return view.size() < 1 and view.name() == "" and view.file_name() is None
 
 	def travel_to_pane(self, direction, create_new_if_necessary=False, aftermath=None):
 
