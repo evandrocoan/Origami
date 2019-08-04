@@ -1,8 +1,8 @@
 from __future__ import division
 import sublime, sublime_plugin
-import copy
 import time
 import threading
+import copy
 from functools import partial
 
 XMIN, YMIN, XMAX, YMAX = list(range(4))
@@ -63,73 +63,6 @@ def fixed_set_layout(window, layout):
 def fixed_set_layout_no_focus_change(window, layout):
     active_group = window.active_group()
     window.run_command('set_layout', layout)
-
-
-g_sleepEvent = threading.Event()
-g_is_already_running = False
-
-
-def plugin_unloaded():
-    global g_is_already_running
-    g_is_already_running = False
-
-
-def plugin_loaded():
-
-    if not g_is_already_running:
-        g_sleepEvent.set()
-
-        # Wait last thread Preferences class to be unloaded
-        sublime.set_timeout_async( configure_tabless_count, 15000 )
-
-
-def configure_tabless_count():
-    """
-        break/interrupt a time.sleep() in python
-        https://stackoverflow.com/questions/5114292/break-interrupt-a-time-sleep-in-python
-    """
-    global g_is_already_running
-    g_is_already_running = True
-
-    # Reset the internal flag to false. Subsequently, threads calling wait() will block until set()
-    # is called to set the internal flag to true again.
-    g_sleepEvent.clear()
-
-    thread = threading.Thread( target=tabless_count_loop )
-    thread.start()
-
-
-def tabless_count_loop():
-
-    while True:
-        # Stops the thread when the plugin is reloaded or unloaded
-        if not g_is_already_running:
-            break
-
-        # print( "tabless_count_loop", time.time() )
-        check_view_to_close()
-        g_sleepEvent.wait( 5 )
-
-
-g_views_to_close = {}
-
-def add_view_to_close(window):
-    view = window.active_view()
-    group, index = window.get_view_index( view )
-    g_views_to_close[group] = view
-
-def check_view_to_close():
-    window = sublime.active_window()
-    group = window.active_group()
-    # print( 'group', group, 'views_in_group', window.views_in_group( group ), 'g_views_to_close', g_views_to_close )
-
-    if group in g_views_to_close and len( window.views_in_group( group ) ) > 1:
-
-        if PaneCommand.is_tabless( g_views_to_close[group] ):
-            g_views_to_close[group].close()
-
-        del g_views_to_close[group]
-
 
 class WithSettings:
     _settings = None
@@ -214,8 +147,9 @@ class PaneCommand(sublime_plugin.WindowCommand):
             # If we're in an empty group, there's no active view
             return
 
-        self.travel_to_pane(direction, create_new_if_necessary)
         window = self.window
+        self.travel_to_pane(direction, create_new_if_necessary)
+
         active_group = window.active_group()
         views_in_group = window.views_in_group(active_group)
         window.set_view_index(view, active_group, len(views_in_group))
@@ -394,13 +328,6 @@ class PaneCommand(sublime_plugin.WindowCommand):
         window = self.window
 
         active_group = window.active_group()
-        views_in_group = window.views_in_group( active_group )
-
-        # print('zoom_pane active_group', active_group, 'views_in_group', views_in_group)
-        if not views_in_group:
-            window.run_command( "insert", {"characters": "a" } )
-            window.run_command( "undo" )
-            add_view_to_close( window )
 
         rows,cols,cells = self.get_layout()
         current_cell = cells[active_group]
@@ -965,21 +892,3 @@ class OrigamiMoveToGroupCommand(PaneCommand):
             window.run_command( "focus_group", { "group": group } )
 
         threading.Thread(target=move).start()
-
-
-class OrigamiFocusGroupCommand(PaneCommand):
-
-    def run(self, group):
-        window = self.window
-        num_groups = window.num_groups()
-        active_group = window.active_group()
-
-        # avoid visual flip/glitch when switching to a non existing group or the current one
-        if group >= num_groups:
-            return
-
-        if group == active_group:
-            window.run_command( "focus_group", { "group": group } )
-            return
-
-        window.run_command( "focus_group", { "group": group } )

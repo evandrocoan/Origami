@@ -48,16 +48,6 @@
   { "keys": ["ctrl+k", "ctrl+c"], "command": "resize_pane", "args": {"orientation": "cols"} },
   { "keys": ["ctrl+k", "ctrl+r"], "command": "resize_pane", "args": {"orientation": "rows"} },
 
-  { "keys": ["ctrl+1"], "command": "origami_focus_group", "args": { "group": 0 } },
-  { "keys": ["ctrl+2"], "command": "origami_focus_group", "args": { "group": 1 } },
-  { "keys": ["ctrl+3"], "command": "origami_focus_group", "args": { "group": 2 } },
-  { "keys": ["ctrl+4"], "command": "origami_focus_group", "args": { "group": 3 } },
-  { "keys": ["ctrl+5"], "command": "origami_focus_group", "args": { "group": 4 } },
-  { "keys": ["ctrl+6"], "command": "origami_focus_group", "args": { "group": 5 } },
-  { "keys": ["ctrl+7"], "command": "origami_focus_group", "args": { "group": 6 } },
-  { "keys": ["ctrl+8"], "command": "origami_focus_group", "args": { "group": 7 } },
-  { "keys": ["ctrl+9"], "command": "origami_focus_group", "args": { "group": 8 } },
-
   { "keys": ["ctrl+shift+1"], "command": "origami_move_to_group", "args": { "group": 0 } },
   { "keys": ["ctrl+shift+2"], "command": "origami_move_to_group", "args": { "group": 1 } },
   { "keys": ["ctrl+shift+3"], "command": "origami_move_to_group", "args": { "group": 2 } },
@@ -67,5 +57,4 @@
   { "keys": ["ctrl+shift+7"], "command": "origami_move_to_group", "args": { "group": 6 } },
   { "keys": ["ctrl+shift+8"], "command": "origami_move_to_group", "args": { "group": 7 } },
   { "keys": ["ctrl+shift+9"], "command": "origami_move_to_group", "args": { "group": 8 } },
-
 ]
