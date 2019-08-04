@@ -76,14 +76,6 @@ def plugin_unloaded():
 
 def plugin_loaded():
 
-    for window in sublime.windows():
-        origami_has_zoom = window.settings().get('origami_has_zoom')
-
-        if origami_has_zoom:
-            active_group = window.active_group()
-            fraction = window.settings().get( 'origami_fraction%s' % active_group, 0.9 )
-            window.run_command( "zoom_pane", { "fraction": fraction } )
-
     if not g_is_already_running:
         g_sleepEvent.set()
 
@@ -207,14 +199,7 @@ class PaneCommand(sublime_plugin.WindowCommand):
     def is_tabless(view):
         return view.size() < 1 and view.name() == "" and view.file_name() is None
 
-    def travel_to_pane(self, direction, create_new_if_necessary=False, aftermath=None):
-
-        def zoomed_function():
-            self._travel_to_pane( direction, create_new_if_necessary )
-
-        run_zoomed_function( self, zoomed_function, aftermath )
-
-    def _travel_to_pane(self, direction, create_new_if_necessary=False):
+    def travel_to_pane(self, direction, create_new_if_necessary=False):
         adjacent_cell = self.adjacent_cell(direction)
         if adjacent_cell:
             cells = self.get_cells()
@@ -229,14 +214,12 @@ class PaneCommand(sublime_plugin.WindowCommand):
             # If we're in an empty group, there's no active view
             return
 
-        def aftermath(self):
-            window = self.window
-            active_group = window.active_group()
-            views_in_group = window.views_in_group(active_group)
-            window.set_view_index(view, active_group, len(views_in_group))
-            sublime.set_timeout(lambda: window.focus_view(view))
-
-        self.travel_to_pane(direction, create_new_if_necessary, aftermath)
+        self.travel_to_pane(direction, create_new_if_necessary)
+        window = self.window
+        active_group = window.active_group()
+        views_in_group = window.views_in_group(active_group)
+        window.set_view_index(view, active_group, len(views_in_group))
+        sublime.set_timeout(lambda: window.focus_view(view))
 
 
     def clone_file_to_pane(self, direction, create_new_if_necessary=False):
@@ -506,19 +489,13 @@ class PaneCommand(sublime_plugin.WindowCommand):
         else:
             self.zoom_pane(fraction)
 
-    def create_pane(self, direction, give_focus=False, aftermath=None):
+    def create_pane(self, direction, give_focus=False):
         has_zoom = self.has_zoom()
         # print('create_pane has_zoom', has_zoom, 'active_group', self.window.active_group(), 'give_focus', give_focus)
 
         if has_zoom and not give_focus:
             give_focus = True
 
-        def zoomed_function():
-            self._create_pane( direction, give_focus )
-
-        run_zoomed_function( self, zoomed_function, aftermath )
-
-    def _create_pane(self, direction, give_focus=False):
         window = self.window
         rows, cols, cells = self.get_layout()
         current_group = window.active_group()
@@ -576,9 +553,8 @@ class PaneCommand(sublime_plugin.WindowCommand):
                 if c[YMIN] == current[YMIN] and c[YMAX] == current[YMAX]:
                     target_dir = dir
         if target_dir:
-            def aftermath(self):
-                self.destroy_pane(opposite_direction(target_dir))
-            self.travel_to_pane(target_dir, aftermath=aftermath)
+            self.travel_to_pane(target_dir)
+            self.destroy_pane(opposite_direction(target_dir))
 
     def destroy_pane(self, direction):
         if direction == "self":
@@ -677,16 +653,14 @@ class CloneFileToPaneCommand(PaneCommand, WithSettings):
 
 class CreatePaneWithFileCommand(PaneCommand):
     def run(self, direction):
-        def aftermath(self):
-            self.carry_file_to_pane(direction)
-        self.create_pane(direction, aftermath=aftermath)
+        self.create_pane(direction)
+        self.carry_file_to_pane(direction)
 
 
 class CreatePaneWithClonedFileCommand(PaneCommand):
     def run(self, direction):
-        def aftermath(self):
-            self.create_pane(direction)
-        self.clone_file_to_pane(direction, aftermath=aftermath)
+        self.create_pane(direction)
+        self.clone_file_to_pane(direction)
 
 
 class PullFileFromPaneCommand(PaneCommand):
@@ -1008,52 +982,4 @@ class OrigamiFocusGroupCommand(PaneCommand):
             window.run_command( "focus_group", { "group": group } )
             return
 
-        def focus():
-            window.run_command( "focus_group", { "group": group } )
-
-        run_zoomed_function( self, focus )
-
-
-def run_zoomed_function(self, zoomed_function, aftermath=None):
-    window = self.window
-    active_group = window.active_group()
-
-    has_zoom = self.has_zoom()
-    # print('run_zoomed_function has_zoom', has_zoom, 'aftermath', aftermath)
-
-    if has_zoom:
-        fraction = window.settings().get( 'origami_fraction%s' % active_group, 0.9 )
-        # print('run_zoomed_function fraction', fraction, 'active_group', sublime.active_window().active_group())
-
-        def unzoom():
-            time.sleep(0.01)
-
-            # print('running unzoom')
-            window.run_command( "unzoom_pane" )
-            threading.Thread(target=focus).start()
-
-        def focus():
-            time.sleep(0.02)
-
-            # print('running zoomed_function')
-            zoomed_function()
-
-            if aftermath:
-                aftermath( self )
-
-            threading.Thread(target=rezoom).start()
-
-        def rezoom():
-            time.sleep(0.03)
-
-            # print('running rezoom')
-            window.run_command( "zoom_pane", { "fraction": fraction } )
-
-        threading.Thread(target=unzoom).start()
-
-    else:
-        zoomed_function()
-
-        if aftermath:
-            aftermath( self )
-
+        window.run_command( "focus_group", { "group": group } )
