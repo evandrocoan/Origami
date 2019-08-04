@@ -76,6 +76,14 @@ def plugin_unloaded():
 
 def plugin_loaded():
 
+    for window in sublime.windows():
+        origami_has_zoom = window.settings().get('origami_has_zoom')
+
+        if origami_has_zoom:
+            active_group = window.active_group()
+            fraction = window.settings().get( 'origami_fraction%s' % active_group, 0.9 )
+            window.run_command( "zoom_pane", { "fraction": fraction } )
+
     if not g_is_already_running:
         g_sleepEvent.set()
 
