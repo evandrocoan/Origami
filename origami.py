@@ -879,14 +879,14 @@ class OrigamiMoveToGroupCommand(PaneCommand):
         window = self.window
 
         def move():
-            time.sleep(0.01)
+            time.sleep(0.1)
 
             # print('running move')
             window.run_command( "move_to_group", { "group": group } )
             threading.Thread(target=focus).start()
 
         def focus():
-            time.sleep(0.02)
+            time.sleep(0.2)
 
             # print('running focus')
             window.run_command( "focus_group", { "group": group } )
