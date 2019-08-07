@@ -64,6 +64,31 @@ def fixed_set_layout_no_focus_change(window, layout):
     active_group = window.active_group()
     window.run_command('set_layout', layout)
 
+
+def run_unzoomed(self, target_function):
+    has_zoom = self.has_zoom()
+
+    if has_zoom:
+        self.window.run_command( "unmaximize_pane" )
+
+        def try_create(attempt):
+            if attempt < 0:
+                print( "Origami Error: Timed out to create the pane..." )
+                return
+
+            has_zoom = self.has_zoom()
+            if has_zoom:
+                sublime.set_timeout( lambda: try_create( attempt - 1 ), 100 )
+
+            else:
+                target_function()
+
+        try_create( 5 )
+
+    else:
+        target_function()
+
+
 class WithSettings:
     _settings = None
 
@@ -72,7 +97,7 @@ class WithSettings:
             self._settings = sublime.load_settings('Origami.sublime-settings')
         return self._settings
 
-class PaneCommand(sublime_plugin.WindowCommand):
+class PaneCommand(sublime_plugin.WindowCommand, WithSettings):
     "Abstract base class for commands."
 
     def get_layout(self):
@@ -328,10 +353,8 @@ class PaneCommand(sublime_plugin.WindowCommand):
         window = self.window
 
         active_group = window.active_group()
-
         rows,cols,cells = self.get_layout()
         current_cell = cells[active_group]
-        window.settings().set('origami_fraction%s' % active_group, fraction)
 
         current_col = current_cell[0]
         num_cols = len(cols)-1
@@ -356,7 +379,7 @@ class PaneCommand(sublime_plugin.WindowCommand):
 
         layout = {"cols": cols, "rows": rows, "cells": cells}
         fixed_set_layout(window, layout)
-        window.settings().set( "origami_has_zoom", True )
+        window.settings().set( "is_panel_maximized", True )
 
     def unzoom_pane(self):
         window = self.window
@@ -379,35 +402,10 @@ class PaneCommand(sublime_plugin.WindowCommand):
 
         layout = {"cols": cols, "rows": rows, "cells": cells}
         fixed_set_layout(window, layout)
-        window.settings().set( "origami_has_zoom", False )
+        window.settings().set( "is_panel_maximized", False )
 
     def has_zoom(self):
-        window = self.window
-        origami_has_zoom = window.settings().get( "origami_has_zoom", None )
-
-        if origami_has_zoom is not None:
-            return origami_has_zoom
-
-        rows,cols,cells = self.get_layout()
-        equal_spacing = True
-
-        num_cols = len(cols)-1
-        col_width = 1/num_cols
-
-        for i,c in enumerate(cols):
-            if c != i * col_width:
-                equal_spacing = False
-                break
-
-        num_rows = len(rows)-1
-        row_height = 1/num_rows
-
-        for i,r in enumerate(rows):
-            if r != i * row_height:
-                equal_spacing = False
-                break
-
-        return not equal_spacing
+        return self.window.settings().get( "is_panel_maximized", False )
 
     def toggle_zoom(self, fraction):
 
@@ -418,11 +416,10 @@ class PaneCommand(sublime_plugin.WindowCommand):
 
     def create_pane(self, direction, give_focus=False):
         has_zoom = self.has_zoom()
-        # print('create_pane has_zoom', has_zoom, 'active_group', self.window.active_group(), 'give_focus', give_focus)
+        give_focus = give_focus or has_zoom and not give_focus
+        run_unzoomed( self, lambda: self._create_pane( direction, give_focus, has_zoom ) )
 
-        if has_zoom and not give_focus:
-            give_focus = True
-
+    def _create_pane(self, direction, give_focus, has_zoom):
         window = self.window
         rows, cols, cells = self.get_layout()
         current_group = window.active_group()
@@ -457,7 +454,10 @@ class PaneCommand(sublime_plugin.WindowCommand):
             if give_focus:
                 self.travel_to_pane(direction)
 
-    def destroy_current_pane(self):
+        if has_zoom:
+            window.run_command( "maximize_pane" )
+
+    def _destroy_current_pane(self, has_zoom):
         #Out of the four adjacent panes, one was split to create this pane.
         #Find out which one, move to it, then destroy this pane.
         cells = self.get_cells()
@@ -481,11 +481,15 @@ class PaneCommand(sublime_plugin.WindowCommand):
                     target_dir = dir
         if target_dir:
             self.travel_to_pane(target_dir)
-            self.destroy_pane(opposite_direction(target_dir))
+            self._destroy_pane( opposite_direction( target_dir ), has_zoom )
 
     def destroy_pane(self, direction):
+        has_zoom = self.has_zoom()
+        run_unzoomed( self, lambda: self._destroy_pane( direction, has_zoom ) )
+
+    def _destroy_pane(self, direction, has_zoom):
         if direction == "self":
-            self.destroy_current_pane()
+            self._destroy_current_pane( has_zoom )
             return
 
         window = self.window
@@ -542,6 +546,9 @@ class PaneCommand(sublime_plugin.WindowCommand):
             layout = {"cols": cols, "rows": rows, "cells": cells}
             fixed_set_layout(window, layout)
 
+        if has_zoom and not self.settings().get("unzoom_after_closing_pane", False):
+            window.run_command( "maximize_pane" )
+
     def pull_file_from_pane(self, direction):
         adjacent_cell = self.adjacent_cell(direction)
 
@@ -557,21 +564,21 @@ class PaneCommand(sublime_plugin.WindowCommand):
                 self.window.set_view_index(view, active_group_index, len(views_in_group))
 
 
-class TravelToPaneCommand(PaneCommand, WithSettings):
+class TravelToPaneCommand(PaneCommand):
     def run(self, direction, create_new_if_necessary=None):
         if create_new_if_necessary is None:
             create_new_if_necessary = self.settings().get('create_new_pane_if_necessary')
         self.travel_to_pane(direction, create_new_if_necessary)
 
 
-class CarryFileToPaneCommand(PaneCommand, WithSettings):
+class CarryFileToPaneCommand(PaneCommand):
     def run(self, direction, create_new_if_necessary=None):
         if create_new_if_necessary is None:
             create_new_if_necessary = self.settings().get('create_new_pane_if_necessary')
         self.carry_file_to_pane(direction, create_new_if_necessary)
 
 
-class CloneFileToPaneCommand(PaneCommand, WithSettings):
+class CloneFileToPaneCommand(PaneCommand):
     def run(self, direction, create_new_if_necessary=None):
         if create_new_if_necessary is None:
             create_new_if_necessary = self.settings().get('create_new_pane_if_necessary')
@@ -632,7 +639,7 @@ class ReorderPaneCommand(PaneCommand):
         self.reorder_panes()
 
 
-class SaveLayoutCommand(PaneCommand, WithSettings):
+class SaveLayoutCommand(PaneCommand):
     """
     Save the current layout configuration in a settings file.
 
@@ -684,7 +691,7 @@ class SaveLayoutCommand(PaneCommand, WithSettings):
             None
         )
 
-class RestoreLayoutCommand(PaneCommand, WithSettings):
+class RestoreLayoutCommand(PaneCommand):
     """
     Restore a saved layout from a settings file.
 
@@ -712,7 +719,7 @@ class RestoreLayoutCommand(PaneCommand, WithSettings):
             self.window.show_quick_panel(layout_names, self.on_done)
 
 
-class RemoveLayoutCommand(PaneCommand, WithSettings):
+class RemoveLayoutCommand(PaneCommand):
     """
     Remove a previously saved layout from your settings file
 
@@ -737,7 +744,7 @@ class RemoveLayoutCommand(PaneCommand, WithSettings):
             self.window.show_quick_panel(layout_names, self.on_done)
 
 
-class NewWindowFromSavedLayoutCommand(PaneCommand, WithSettings):
+class NewWindowFromSavedLayoutCommand(PaneCommand):
     """
     Brings up a list of saved views and allows the user
     to create a new window using that layout.
@@ -808,9 +815,6 @@ class AutoCloseEmptyPanes(sublime_plugin.EventListener, WithSettings):
         auto_close = view.settings().get("origami_auto_close_empty_panes", False)
         auto_close = self.settings().get("auto_close_empty_panes", auto_close)
 
-        if not auto_close:
-            return
-
         if self.is_tabless_view(view):
             # We don't want to close the pane when closing a transient view
             return
@@ -819,16 +823,10 @@ class AutoCloseEmptyPanes(sublime_plugin.EventListener, WithSettings):
         active_group = window.active_group()
 
         # We're in pre_close, so use set_timeout to close the group right after this.
-        if len(window.views_in_group(active_group)) == 1:
+        if len(window.views_in_group(active_group)) < 2:
 
             if auto_close:
-                sublime.set_timeout(lambda: window.run_command("destroy_pane", {"direction":"self"}), 100)
-
-                pane = PaneCommand( window )
-                has_zoom = pane.has_zoom()
-
-                if has_zoom:
-                    window.run_command( "unzoom_pane" )
+                sublime.set_timeout( lambda: window.run_command("destroy_pane", {"direction":"self"}), 100 )
 
 
 class AutoZoomOnFocus(sublime_plugin.EventListener, WithSettings):

@@ -20,4 +20,7 @@
 
     // A value between 0.0 and 1.0 to zoom a panel automatically when focused
     "auto_zoom_on_focus": false,
+
+    // When some pane is closed and it is zoomed, unzoom window panes
+    "unzoom_after_closing_pane": false,
 }
