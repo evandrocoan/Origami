@@ -23,4 +23,14 @@
 
     // When some pane is closed and it is zoomed, unzoom window panes
     "unzoom_after_closing_pane": false,
+
+    // When some pane is created and from a zoomed pane, unzoom window panes
+    "unzoom_after_creating_pane": false,
+
+    // When some pane is created and from a zoomed pane, unzoom window panes
+    "unzoom_after_creating_pane": false,
+
+    // When unzooming some pane, remember all panes initial sizes
+    "remember_panes_layout": true,
 }
+
