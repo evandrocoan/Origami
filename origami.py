@@ -75,6 +75,10 @@ def fixed_set_layout_no_focus_change(window, layout):
     window.run_command('set_layout', layout)
 
 
+def is_pane_zoomed(window):
+    return window.settings().get( 'original_panes_layout' )
+
+
 def maximize_pane(window, fraction):
 
     if fraction:
@@ -375,7 +379,7 @@ class PaneCommand(sublime_plugin.WindowCommand, WithSettings):
         layout = self._on_resize_panes_layout(orientation, cells, relevant_indx, orig_data, text)
         fixed_set_layout(self.window, layout)
 
-    def zoom_pane(self, fraction):
+    def zoom_pane(self, fraction, skip_saving):
         window = self.window
         active_group = window.active_group()
 
@@ -383,7 +387,7 @@ class PaneCommand(sublime_plugin.WindowCommand, WithSettings):
         origami_fraction = settings.get( 'origami_fraction' )
         original_panes_layout = settings.get( 'original_panes_layout' )
 
-        if origami_fraction or original_panes_layout:
+        if not skip_saving and ( origami_fraction or original_panes_layout ):
             print('Origami Error: Trying to zoom a zoomed pane!')
             unmaximize_pane( window )
             return
@@ -398,8 +402,8 @@ class PaneCommand(sublime_plugin.WindowCommand, WithSettings):
         current_col = current_cell[0]
         num_cols = len(cols)-1
 
-        settings.set( 'origami_fraction', fraction )
-        settings.set( 'original_panes_layout', window.layout() )
+        if not skip_saving:
+            settings.set( 'original_panes_layout', window.layout() )
 
         #TODO:  the sizes of the unzoomed panes are calculated incorrectly if the
         #       unzoomed panes have a split that overlaps the zoomed pane.
@@ -422,7 +426,8 @@ class PaneCommand(sublime_plugin.WindowCommand, WithSettings):
         layout = {'cols': cols, 'rows': rows, 'cells': cells}
         fixed_set_layout(window, layout)
 
-        settings.set( 'is_panel_maximized', True )
+        settings.set( 'origami_fraction', fraction )
+        settings.set( 'max_pane_maximized', None )
         settings.set( 'maximized_pane_group', window.active_group() )
 
     def unzoom_pane(self):
@@ -434,7 +439,7 @@ class PaneCommand(sublime_plugin.WindowCommand, WithSettings):
 
         window.settings().set( 'origami_fraction', None )
         window.settings().set( 'original_panes_layout', None )
-        window.settings().set( 'is_panel_maximized', False )
+        window.settings().set( 'max_pane_maximized', False )
 
         if not ( remember_panes_layout and layout ):
             rows,cols,cells = self.layout()
@@ -459,22 +464,7 @@ class PaneCommand(sublime_plugin.WindowCommand, WithSettings):
         fixed_set_layout(window, layout)
 
     def has_zoom(self):
-        return self.window.settings().get( 'is_panel_maximized', False )
-
-    def toggle_zoom(self, fraction):
-        window = self.window
-
-        if self.has_zoom():
-            self.unzoom_pane()
-
-        else:
-            num_groups = window.num_groups()
-
-            if num_groups > 1:
-                self.zoom_pane( fraction )
-
-            else:
-                print( "Origami Error: Cannot zoom a window only with '%s' panes!" % num_groups )
+        return is_pane_zoomed( self.window )
 
     def create_pane(self, direction, give_focus=False):
         has_zoom = self.has_zoom()
@@ -668,8 +658,8 @@ class PullFileFromPaneCommand(PaneCommand):
 
 
 class ZoomPaneCommand(PaneCommand):
-    def run(self, fraction=None):
-        self.zoom_pane(fraction)
+    def run(self, fraction=None, skip_saving=False):
+        self.zoom_pane(fraction, skip_saving)
 
 
 class UnzoomPaneCommand(PaneCommand):
@@ -677,9 +667,37 @@ class UnzoomPaneCommand(PaneCommand):
         self.unzoom_pane()
 
 
-class ToggleZoomPaneCommand(PaneCommand):
+class ToggleZoomPaneCommand(sublime_plugin.WindowCommand):
     def run(self, fraction=None):
-        self.toggle_zoom(fraction)
+        window = self.window
+        settings = window.settings()
+        max_pane_maximized = settings.get( 'max_pane_maximized' )
+        origami_fraction = settings.get( 'origami_fraction' )
+        original_panes_layout = settings.get( 'original_panes_layout' )
+
+        # print( 'max_pane max_pane_maximized %-5s, origami_fraction: %-5s, original_panes_layout, %-5s' % ( max_pane_maximized, origami_fraction, original_panes_layout is not None ) )
+        if is_pane_zoomed( window ):
+
+            if origami_fraction:
+                window.run_command( 'unzoom_pane' )
+
+            else:
+
+                if max_pane_maximized:
+                    window.run_command( 'zoom_pane', { 'fraction': fraction, 'skip_saving': True } )
+
+                else:
+                    print( "Origami Error: Invalid zooming state!" )
+                    window.run_command( 'unmaximize_pane' )
+
+        else:
+            num_groups = window.num_groups()
+
+            if num_groups > 1:
+                window.run_command( 'zoom_pane', { 'fraction': fraction } )
+
+            else:
+                print( "Origami Error: Cannot zoom a window only with '%s' panes!" % num_groups )
 
 
 class CreatePaneCommand(PaneCommand):
