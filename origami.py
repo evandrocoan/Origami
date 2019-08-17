@@ -7,6 +7,20 @@ from functools import partial
 
 XMIN, YMIN, XMAX, YMAX = list(range(4))
 
+try:
+    # Do not import State directly to not break us in case the MaxPane.max_pane module is reloaded
+    import MaxPane
+
+except ImportError as error:
+    print('Origami Error: Could not import the MaxPane package!', error)
+
+    class MaxPane(object):
+
+        class max_pane(object):
+
+            class State(object):
+                is_fixing_layout = False
+
 
 def increment_if_greater_or_equal(x, threshold):
     if x >= threshold:
@@ -64,14 +78,16 @@ def cells_adjacent_to_cell_in_direction(cells, cell, direction):
 def fixed_set_layout(window, layout):
     #A bug was introduced in Sublime Text 3, sometime before 3053, in that it
     #changes the active group to 0 when the layout is changed. Annoying.
+    State.is_fixing_layout = True
     active_group = window.active_group()
     window.run_command('set_layout', layout)
+
     num_groups = len(layout['cells'])
     window.focus_group(min(active_group, num_groups-1))
+    State.is_fixing_layout = False
 
 
 def fixed_set_layout_no_focus_change(window, layout):
-    active_group = window.active_group()
     window.run_command('set_layout', layout)
 
 
