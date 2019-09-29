@@ -42,7 +42,25 @@ You can have Origami automatically zoom the active pane by setting `auto_zoom_on
 
 Origami can also automatically close a pane for you once you've closed the last file in it. Just set `auto_close_empty_panes` to true in the Origami preferences.
 
-Install
--------
 
-Search for Origami on [Package Control](https://sublime.wbond.net/)!
+## Installation
+
+### By Package Control
+
+1. Download & Install `Sublime Text 3` (https://www.sublimetext.com/3)
+1. Go to the menu `Tools -> Install Package Control`, then,
+   wait few seconds until the `Package Control` installation finishes
+1. Go to the menu `Preferences -> Package Control`
+1. Type `Package Control Add Channel` on the opened quick panel and press <kbd>Enter</kbd>
+1. Then, input the following address and press <kbd>Enter</kbd>
+   ```
+   https://raw.githubusercontent.com/evandrocoan/StudioChannel/master/channel.json
+   ```
+1. Now, go again to the menu `Preferences -> Package Control`
+1. This time type `Package Control Install Package` on the opened quick panel and press <kbd>Enter</kbd>
+1. Then, search for `Origami` and press <kbd>Enter</kbd>
+
+See also:
+1. [ITE - Integrated Toolset Environment](https://github.com/evandrocoan/ITE)
+1. [Package control docs](https://packagecontrol.io/docs/usage) for details.
+
